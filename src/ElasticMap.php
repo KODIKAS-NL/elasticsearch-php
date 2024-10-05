@@ -17,32 +17,27 @@ class ElasticMap
                 'analysis' => [
                     'filter' => [
                         'ngram_filter' => [
-                            'type' => 'nGram',
+                            'type' => 'ngram',
                             'min_gram' => '2',
                             'max_gram' => '20',
                             'token_chars' => ['letter', 'digit', 'punctuation', 'symbol']
                         ]
                     ],
                     'analyzer' => [
-                        'ngram_analyzer' => [
+                        'default' => [
                             'type' => 'custom',
                             'tokenizer' => 'whitespace',
                             'filter' => ['lowercase', 'asciifolding', 'ngram_filter']
                         ],
-                        'whitespace_analyzer' => [
+                        'default_search' => [
                             'type' => 'custom',
                             'tokenizer' => 'whitespace',
                             'filter' => ['lowercase', 'asciifolding']
                         ]
                     ]
-                ]
-            ],
-            'mappings' => [
+                ],
                 'index' => [
-                    '_all' => [
-                        'analyzer' => 'ngram_analyzer',
-                        'search_analyzer' => 'whitespace_analyzer'
-                    ]
+                    'max_ngram_diff' => 20
                 ]
             ]
         ];

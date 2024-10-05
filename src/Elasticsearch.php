@@ -2,8 +2,8 @@
 
 namespace LegalThings;
 
-use Elasticsearch\ClientBuilder;
-use Elasticsearch\Client;
+use Elastic\Elasticsearch\ClientBuilder;
+use Elastic\Elasticsearch\Client;
 
 class Elasticsearch
 {
