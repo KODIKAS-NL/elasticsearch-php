@@ -1,5 +1,5 @@
 {
-    "name": "legalthings/elasticsearch-php",
+    "name": "kodikas-nl/elasticsearch-php",
     "description": "Elasticsearch for PHP",
     "license": "MIT",
     "require": {
