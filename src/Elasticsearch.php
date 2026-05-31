@@ -36,7 +36,7 @@ class Elasticsearch
      * 
      * @param object $config
      * 
-     * @return Logger $logger
+        * @return Client
      */
     protected function create($config)
     {
@@ -46,90 +46,123 @@ class Elasticsearch
         
         return $client;
     }
+
+
+    /**
+     * Normalize an ES client response to array when possible.
+     *
+     * @param mixed $response
+     *
+     * @return array
+     */
+    protected function responseToArray($response)
+    {
+        if (is_array($response)) {
+            return $response;
+        }
+
+        if (is_object($response) && method_exists($response, 'asArray')) {
+            return $response->asArray();
+        }
+
+        return (array)$response;
+    }
+
+    /**
+     * Normalize an ES client response to bool when possible.
+     *
+     * @param mixed $response
+     *
+     * @return bool
+     */
+    protected function responseToBool($response)
+    {
+        if (is_bool($response)) {
+            return $response;
+        }
+
+        if (is_object($response) && method_exists($response, 'asBool')) {
+            return $response->asBool();
+        }
+
+        return (bool)$response;
+    }
     
     
     /**
      * Index data in Elasticsearch
      * 
      * @param string       $index   index name
-     * @param string       $type    index type
      * @param string       $id      identifier for the data
      * @param array|object $data    data to index
      * 
      * @return array
      */
-    public function index($index, $type, $id, $data)
+    public function index($index, $id, $data)
     {
         $params = [
             'index' => $index,
-            'type' => $type,
             'id' => $id,
             'body' => $data
         ];
 
-        return $this->client->index($params);
+        return $this->responseToArray($this->client->index($params));
     }
     
     /**
      * Update data in Elasticsearch
      * 
      * @param string       $index   index name
-     * @param string       $type    index type
      * @param string       $id      identifier for the data
      * @param array|object $data    data to index
      * 
      * @return array
      */
-    public function update($index, $type, $id, $data)
+    public function update($index, $id, $data)
     {
         $params = [
             'index' => $index,
-            'type' => $type,
             'id' => $id,
             'body' => ['doc' => $data]
         ];
         
-        return $this->client->update($params);
+        return $this->responseToArray($this->client->update($params));
     }
     
     /**
      * Get data in Elasticsearch
      * 
      * @param string       $index   index name
-     * @param string       $type    index type
      * @param string       $id      identifier for the data
      * 
      * @return array
      */
-    public function get($index, $type, $id)
+    public function get($index, $id)
     {
         $params = [
             'index' => $index,
-            'type' => $type,
             'id' => $id
         ];
 
-        return $this->client->get($params);
+        return $this->responseToArray($this->client->get($params));
     }
     
     /**
      * Delete data in Elasticsearch
      * 
      * @param string       $index   index name
-     * @param string       $type    index type
      * @param string       $id      identifier for the data
      * 
      * @return array
      */
-    public function delete($index, $type, $id)
+    public function delete($index, $id)
     {
         $params = [
             'index' => $index,
-            'type' => $type,
             'id' => $id
         ];
 
-        return $this->client->delete($params);
+        return $this->responseToArray($this->client->delete($params));
     }
     
     /**
@@ -137,7 +170,6 @@ class Elasticsearch
      * This function will take care of transforming filters and queries to data that Elasticsearch expects
      * 
      * @param string       $index   index name
-     * @param string       $type    index type
      * @param string       $text    text to search for
      *                              example 'john doe'
      * @param array        $fields  search for text only in given fields
@@ -151,10 +183,11 @@ class Elasticsearch
      * 
      * @return array
      */
-    public function search($index, $type, $text = null, $fields = [], $filter = [], $sort = [], $limit = null, $offset = null)
+    public function search($index, $text = null, $fields = [], $filter = [], $sort = [], $limit = null, $offset = null)
     {
+        $must = null;
         if (isset($text)) {
-            $text = [
+            $must = [
                 'query_string' => [
                     'query' => $text,
                     'fields' => $fields,
@@ -171,14 +204,21 @@ class Elasticsearch
             $sort = (new ElasticSort($sort))->transform();
         }
         
-        $body = [
-            'query' => [
-                'bool' => [
-                    'must' => $text,
-                    'filter' => $filter
-                ]
-            ]
-        ];
+        if (isset($must) || !empty($filter)) {
+            $query = ['bool' => []];
+
+            if (isset($must)) {
+                $query['bool']['must'] = [$must];
+            }
+
+            if (!empty($filter)) {
+                $query['bool']['filter'] = $filter;
+            }
+        } else {
+            $query = ['match_all' => (object)[]];
+        }
+
+        $body = ['query' => $query];
         
         if (isset($offset)) {
             $body['from'] = $offset;
@@ -190,12 +230,14 @@ class Elasticsearch
         
         $params = [
             'index' => $index,
-            'type' => $type,
-            'sort' => $sort,
             'body' => $body
         ];
 
-        return $this->client->search($params);
+        if (!empty($sort)) {
+            $params['sort'] = $sort;
+        }
+
+        return $this->responseToArray($this->client->search($params));
     }
     
     
@@ -214,7 +256,7 @@ class Elasticsearch
             'body' => $data
         ];
 
-        return $this->client->indices()->create($params);
+        return $this->responseToArray($this->client->indices()->create($params));
     }
     
     /**
@@ -230,7 +272,7 @@ class Elasticsearch
             'index' => $index
         ];
 
-        return $this->client->indices()->delete($params);
+        return $this->responseToArray($this->client->indices()->delete($params));
     }
     
     /**
@@ -246,6 +288,6 @@ class Elasticsearch
             'index' => $index
         ];
 
-        return $this->client->indices()->exists($params);
+        return $this->responseToBool($this->client->indices()->exists($params));
     }
 }

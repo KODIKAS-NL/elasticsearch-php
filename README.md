@@ -8,8 +8,8 @@ The client of the original library is exposed and can be used if needed.
 
 ## Requirements
 
-- [PHP](http://www.php.net) >= 5.6.0
-- [Elasticsearch](https://www.elastic.co/blog/elasticsearch-5-3-0-released) ~5.3.0
+- [PHP](http://www.php.net) >= 7.4.0
+- [Elasticsearch](https://www.elastic.co/elasticsearch) 8.x
 
 
 _Required PHP extensions are marked by composer_
@@ -20,6 +20,35 @@ _Required PHP extensions are marked by composer_
 The library can be installed using composer.
 
     composer require legalthings/elasticsearch-php
+
+
+## Upgrade Guide (ES6 -> ES8)
+
+If your consumer still uses the old typed-document method signatures, use the mapping below.
+
+### Method Signature Changes
+
+| Old usage (ES6 style) | New usage (ES8 style) |
+| --- | --- |
+| `$es->index($index, $type, $id, $data)` | `$es->index($index, $id, $data)` |
+| `$es->update($index, $type, $id, $data)` | `$es->update($index, $id, $data)` |
+| `$es->get($index, $type, $id)` | `$es->get($index, $id)` |
+| `$es->delete($index, $type, $id)` | `$es->delete($index, $id)` |
+| `$es->search($index, $type, $text, $fields, $filter, $sort, $limit, $offset)` | `$es->search($index, $text, $fields, $filter, $sort, $limit, $offset)` |
+
+### Elasticsearch 8 Behavior Changes
+
+- Document types are removed in Elasticsearch 8. Do not send or depend on `_type`.
+- Search responses now return `hits.total` as an object (`{ "value": ..., "relation": ... }`) instead of an integer.
+- When calling `search()` without text and filter, this wrapper sends a `match_all` query.
+- Wrapper methods continue to return arrays/bools for compatibility. If you use `$es->client` directly, the ES8 client returns response objects with helpers like `asArray()` and `asBool()`.
+
+### Minimal Consumer Migration Checklist
+
+1. Remove `$type` from all wrapper method calls.
+2. Remove assertions or parsing logic that expects `_type` in ES responses.
+3. Update `hits.total` handling to read `hits.total.value` when needed.
+4. If your consumer instantiates the ES8 client directly, make sure a PSR-17 implementation is installed (this package uses `nyholm/psr7`).
 
 
 ## Client
@@ -43,7 +72,7 @@ $info = $es->client->info();
 
 ## Configuration
 Configuration is passed to Elasticsearch's configuration builder, which means you can provide any configuration options that it accepts.
-See [this](https://www.elastic.co/guide/en/elasticsearch/client/php-api/5.0/_configuration.html#_building_the_client_from_a_configuration_hash) link for more information.
+See [this](https://www.elastic.co/guide/en/elasticsearch/client/php-api/current/connecting.html) link for more information.
 
 Add `["quiet" => true]` to the config if you want to add custom keys to the configuration.
 If quiet isn't provided, Elasticsearch will throw an exception if it encounters keys unrelated to the Elasticsearch client.
@@ -68,7 +97,6 @@ use LegalThings/Elasticsearch;
 $es = new Elasticsearch($config);
 
 $index = 'books';
-$type = 'ancient';
 $text = 'My book';
 $fields = ['name'];
 $filter = [
@@ -81,7 +109,7 @@ $sort = ['^year'];
 $limit = 15;
 $offset = 0;
 
-$result = $es->search($index, $type, $text, $fields, $filter, $sort, $limit, $offset);
+$result = $es->search($index, $text, $fields, $filter, $sort, $limit, $offset);
 ```
 
 ```json
@@ -94,11 +122,13 @@ $result = $es->search($index, $type, $text, $fields, $filter, $sort, $limit, $of
     "failed": 0
   },
   "hits": {
-    "total": 1,
+    "total": {
+      "value": 1,
+      "relation": "eq"
+    },
     "max_score": null,
     "hits": [{
       "_index": "books",
-      "_type": "ancient",
       "_id": "0001",
       "_score": null,
       "_source": {
@@ -124,7 +154,6 @@ use LegalThings/Elasticsearch;
 $es = new Elasticsearch($config);
         
 $index = 'books';
-$type = 'ancient';
 $id = '0001';
 $data = [
     'id' => '0001',
@@ -134,13 +163,12 @@ $data = [
     'name' => 'My book two'
 ];
 
-$result = $es->index($index, $type, $id, $data);
+  $result = $es->index($index, $id, $data);
 ```
 
 ```json
 {
   "_index": "books",
-  "_type": "ancient",
   "_id": "0001",
   "_version": 1,
   "result": "created",
@@ -163,19 +191,17 @@ use LegalThings/Elasticsearch;
 $es = new Elasticsearch($config);
         
 $index = 'books';
-$type = 'ancient';
 $id = '0001';
 $data = [
     'name' => 'My book three'
 ];
 
-$result = $es->update($index, $type, $id, $data);
+$result = $es->update($index, $id, $data);
 ```
 
 ```json
 {
   "_index": "books",
-  "_type": "ancient",
   "_id": "0001",
   "_version": 2,
   "result": "updated",
@@ -197,16 +223,14 @@ use LegalThings/Elasticsearch;
 $es = new Elasticsearch($config);
         
 $index = 'books';
-$type = 'ancient';
 $id = '0001';
 
-$result = $es->get($index, $type, $id);
+$result = $es->get($index, $id);
 ```
 
 ```json
 {
   "_index": "books",
-  "_type": "ancient",
   "_id": "0001",
   "_version": 1,
   "found": true,
@@ -230,17 +254,15 @@ use LegalThings/Elasticsearch;
 $es = new Elasticsearch($config);
         
 $index = 'books';
-$type = 'ancient';
 $id = '0001';
 
-$result = $es->delete($index, $type, $id);
+$result = $es->delete($index, $id);
 ```
 
 ```json
 {
   "found": true,
   "_index": "books",
-  "_type": "ancient",
   "_id": "0001",
   "_version": 1,
   "result": "deleted",

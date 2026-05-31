@@ -3,11 +3,11 @@
   "cluster_name": "elasticsearch",
   "cluster_uuid": "NSogvs4cTxCN4F71VCLrlw",
   "version": {
-    "number": "5.3.0",
-    "build_hash": "3adb13b",
-    "build_date": "2017-03-23T03:31:50.652Z",
+    "number": "8.15.0",
+    "build_hash": "f97532e680b555c3a05e73a74c28afb666923018",
+    "build_date": "2024-09-19T15:04:53.437772374Z",
     "build_snapshot": false,
-    "lucene_version": "6.4.1"
+    "lucene_version": "9.11.1"
   },
   "tagline": "You Know, for Search"
 }

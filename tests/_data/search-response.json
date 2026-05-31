@@ -7,11 +7,13 @@
     "failed": 0
   },
   "hits": {
-    "total": 1,
+    "total": {
+      "value": 1,
+      "relation": "eq"
+    },
     "max_score": null,
     "hits": [{
       "_index": "books",
-      "_type": "ancient",
       "_id": "0001",
       "_score": null,
       "_source": {
